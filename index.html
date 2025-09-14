@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Procedure Document Converter</title>
     <script src="https://unpkg.com/mammoth@1.4.2/mammoth.browser.min.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -19,6 +17,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            padding-top: 120px; /* Account for sticky search */
         }
 
         .container {
@@ -94,8 +93,23 @@
             font-size: 0.9rem;
         }
 
+        /* Sticky Search Section */
         .search-section {
-            margin: 30px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #e2e8f0;
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto;
             position: relative;
         }
 
@@ -168,6 +182,16 @@
             color: white;
         }
 
+        .btn-collapse {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            color: white;
+        }
+
+        .btn-collapse:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(237, 137, 54, 0.4);
+        }
+
         .document-viewer {
             border: 1px solid #e2e8f0;
             border-radius: 10px;
@@ -175,8 +199,9 @@
             min-height: 400px;
         }
 
-        .editor-container {
-            min-height: 300px;
+        .document-viewer.editing {
+            border: 2px solid #4299e1;
+            background: #f7fafc;
         }
 
         .version-history {
@@ -197,7 +222,7 @@
 
         .version-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
@@ -268,97 +293,346 @@
             border: 1px solid #fc8181;
         }
 
+        /* Enhanced Procedures Container */
         .procedures-container {
             font-family: Arial, sans-serif;
-            line-height: 1.6;
+            line-height: 1.8;
+            padding: 20px;
         }
 
-        .category-section {
-            margin-bottom: 2rem;
+        /* Important Things Section - Always at top */
+        .important-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(240, 147, 251, 0.3);
+        }
+
+        .important-section h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .important-content {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .table-of-contents {
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .table-of-contents h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .toc-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+
+        .toc-link {
+            color: #4299e1;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toc-link:hover {
+            background: #4299e1;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+        }
+
+        .toc-link::before {
+            content: "🔗";
+            font-size: 0.9rem;
+        }
+
+        .collapsible-section {
+            margin-bottom: 20px;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .category-header {
+        .section-header {
             background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
             color: white;
-            padding: 1rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .procedure-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .procedure-table th {
-            background: #4a5568;
-            color: white;
-            padding: 0.75rem;
-            text-align: left;
+            padding: 18px 24px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
         }
 
-        .procedure-table td {
-            border: 1px solid #e2e8f0;
-            padding: 1rem;
-            vertical-align: top;
+        .section-header:hover {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
         }
 
-        .procedure-table tr:nth-child(even) {
-            background-color: #f8fafc;
+        .section-header .toggle-icon {
+            font-size: 1.3rem;
+            transition: transform 0.3s ease;
         }
 
-        .event-code {
-            font-weight: bold;
+        .section-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 24px;
+            transition: all 0.3s ease;
+            max-height: 2000px;
+            overflow: hidden;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            padding: 0 24px;
+        }
+
+        .event-code-badge {
+            background: #4299e1;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 25px;
             font-family: 'Courier New', monospace;
-            background: #f7fafc;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1rem;
             display: inline-block;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(66, 153, 225, 0.3);
         }
 
         .description {
             color: #2b6cb0;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .procedure-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .procedure-details * {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
 
         .error-messages {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: #fed7d7;
-            border-left: 4px solid #f56565;
+            margin-top: 15px;
+            padding: 15px;
+            background: #e6f3ff;
+            border-left: 4px solid #4299e1;
             border-radius: 4px;
         }
 
         .error-message {
-            color: #c53030;
-            margin-bottom: 0.25rem;
-            font-size: 0.9rem;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            position: relative;
+            padding-left: 15px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .error-message::before {
+            content: "•";
+            color: #4299e1;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
         }
 
         .steps {
-            margin-top: 1rem;
-            padding: 0.75rem;
+            margin-top: 15px;
+            padding: 15px;
             background: #f0fff4;
             border-left: 4px solid #48bb78;
             border-radius: 4px;
         }
 
         .step {
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
             border-bottom: 1px solid #e2e8f0;
         }
 
         .step-content {
-            font-weight: 600;
+            font-weight: 500;
             color: #2d3748;
-            margin-bottom: 0.25rem;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        /* Additional Info Section */
+        .additional-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            border-radius: 4px;
+        }
+
+        .info-item {
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            position: relative;
+            padding-left: 15px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .info-item::before {
+            content: "•";
+            color: #6c757d;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        /* Enhanced Line Formatting */
+        .formatted-line {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .line-item {
+            margin-bottom: 6px;
+            line-height: 1.5;
+            padding: 2px 0;
+        }
+
+        .line-item strong {
+            color: #2d3748;
+        }
+
+        /* Enhanced Bullet Point Formatting */
+        .bullet-list {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .bullet-item {
+            margin-bottom: 8px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .bullet-item::before {
+            content: "•";
+            color: #4299e1;
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+
+        .sub-bullet-item {
+            margin-left: 20px;
+            margin-bottom: 6px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .sub-bullet-item::before {
+            content: "◦";
+            color: #718096;
+            position: absolute;
+            left: -15px;
+        }
+
+        /* Error Handling and Rules Tables */
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .rules-table th {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .rules-table td {
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            vertical-align: top;
+            line-height: 1.6;
+        }
+
+        .rules-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        .rules-table tr:hover {
+            background-color: #edf2f7;
+        }
+
+        .editing-mode .section-content {
+            background: #f7fafc;
+            border: 1px dashed #4299e1;
+        }
+
+        .editing-mode [contenteditable="true"] {
+            outline: 2px solid #4299e1;
+            outline-offset: 2px;
+            border-radius: 4px;
+            padding: 8px;
+            background: white;
+            margin: 2px 0;
+        }
+
+        .editing-mode [contenteditable="true"]:focus {
+            outline: 2px solid #3182ce;
+            background: #fff5f5;
         }
 
         .hidden {
@@ -387,6 +661,10 @@
         }
 
         @media (max-width: 768px) {
+            body {
+                padding-top: 140px;
+            }
+            
             .content {
                 padding: 20px;
             }
@@ -399,10 +677,26 @@
                 width: 100%;
                 justify-content: center;
             }
+
+            .toc-links {
+                grid-template-columns: 1fr;
+            }
+
+            .search-section {
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Sticky Search Section -->
+    <div class="search-section hidden" id="searchSection">
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search event codes, descriptions, error messages, steps, or any content...">
+            <span class="search-icon">🔍</span>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>📋 Procedure Document Converter</h1>
@@ -420,17 +714,13 @@
                 <input type="file" id="fileInput" accept=".docx" style="display: none;">
             </div>
 
-            <!-- Search Section -->
-            <div class="search-section hidden" id="searchSection">
-                <input type="text" class="search-input" id="searchInput" placeholder="Search event codes, descriptions, error messages, or steps...">
-                <span class="search-icon">🔍</span>
-            </div>
-
             <!-- Controls -->
             <div class="controls hidden" id="controls">
                 <button class="btn btn-primary" id="editBtn">✏️ Edit Document</button>
                 <button class="btn btn-secondary" id="versionBtn">📚 Version History</button>
                 <button class="btn btn-secondary" id="downloadBtn">💾 Download HTML</button>
+                <button class="btn btn-collapse" id="collapseAllBtn">📁 Collapse All</button>
+                <button class="btn btn-collapse" id="expandAllBtn">📂 Expand All</button>
                 <button class="btn btn-success hidden" id="saveBtn">💾 Save Changes</button>
                 <button class="btn btn-secondary hidden" id="cancelBtn">❌ Cancel</button>
             </div>
@@ -463,7 +753,6 @@
                     <p>Processing your document...</p>
                 </div>
                 <div id="documentContent"></div>
-                <div class="editor-container hidden" id="editorContainer"></div>
             </div>
 
             <!-- Version History -->
@@ -481,8 +770,8 @@
                 this.versions = [];
                 this.currentVersion = 1;
                 this.isEditing = false;
-                this.quill = null;
                 this.originalContent = '';
+                this.eventCodes = [];
                 
                 this.initializeEventListeners();
                 this.loadFromStorage();
@@ -517,6 +806,8 @@
                 document.getElementById('cancelBtn').addEventListener('click', () => this.cancelEditing());
                 document.getElementById('versionBtn').addEventListener('click', () => this.toggleVersionHistory());
                 document.getElementById('downloadBtn').addEventListener('click', () => this.downloadHTML());
+                document.getElementById('collapseAllBtn').addEventListener('click', () => this.collapseAll());
+                document.getElementById('expandAllBtn').addEventListener('click', () => this.expandAll());
 
                 // Search
                 document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -570,37 +861,205 @@
             }
 
             processWordContent(html) {
-                // Create a temporary div to process the HTML
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
-
-                // Extract tables and process them as procedures
-                const tables = tempDiv.querySelectorAll('table');
+                
+                this.eventCodes = [];
                 let processedContent = '<div class="procedures-container">';
-
-                tables.forEach((table, index) => {
-                    processedContent += this.processTable(table, `Section ${index + 1}`);
-                });
-
-                // If no tables found, use the original content
-                if (tables.length === 0) {
-                    processedContent = `<div class="procedures-container">${html}</div>`;
+                
+                // Extract and prioritize "Important Things to Know" section
+                const importantContent = this.extractImportantSection(tempDiv);
+                if (importantContent) {
+                    processedContent += importantContent;
                 }
-
+                
+                // Create table of contents
+                processedContent += '<div class="table-of-contents" id="tableOfContents"><h3>📋 Event Codes & Navigation</h3><div class="toc-links" id="tocLinks"></div></div>';
+                
+                // Extract "Overarching Rules" section
+                const overarchingRulesContent = this.extractOverarchingRules(tempDiv);
+                if (overarchingRulesContent) {
+                    processedContent += overarchingRulesContent;
+                }
+                
+                // Process event codes from tables
+                const eventCodesContent = this.extractEventCodesTable(tempDiv);
+                if (eventCodesContent) {
+                    processedContent += eventCodesContent;
+                }
+                
+                // Process individual event code sections
+                const eventSections = this.processEventCodeSections(tempDiv);
+                processedContent += eventSections;
+                
+                // Process error handling matrix
+                const errorHandlingContent = this.extractErrorHandling(tempDiv);
+                if (errorHandlingContent) {
+                    processedContent += errorHandlingContent;
+                }
+                
+                // Process any remaining content
+                const remainingContent = this.processRemainingContent(tempDiv);
+                if (remainingContent) {
+                    processedContent += remainingContent;
+                }
+                
                 processedContent += '</div>';
                 return processedContent;
             }
 
-            processTable(table, categoryName) {
+            extractImportantSection(tempDiv) {
+                const allText = tempDiv.textContent;
+                const importantMatch = allText.match(/Important Things to Know:([^]*?)(?=\n\n[A-Z]|Error Handling|Event Codes|$)/i);
+                
+                if (importantMatch) {
+                    const importantText = importantMatch[1];
+                    const lines = importantText.split('\n'); // Don't filter empty lines
+                    
+                    let importantHTML = `
+                        <div class="important-section">
+                            <h3>⚠️ Important Things to Know</h3>
+                            <div class="important-content">
+                    `;
+                    
+                    let inBulletList = false;
+                    
+                    lines.forEach(line => {
+                        const trimmedLine = line.trim();
+                        
+                        // Handle empty lines
+                        if (!trimmedLine) {
+                            if (inBulletList) {
+                                importantHTML += '</div><br>';
+                                inBulletList = false;
+                            } else {
+                                importantHTML += '<br>';
+                            }
+                            return;
+                        }
+                        
+                        if (trimmedLine.startsWith('*') || trimmedLine.startsWith('•')) {
+                            if (!inBulletList) {
+                                importantHTML += '<div class="bullet-list">';
+                                inBulletList = true;
+                            }
+                            const bulletContent = trimmedLine.substring(1).trim();
+                            importantHTML += `<div class="bullet-item" contenteditable="false">${bulletContent}</div>`;
+                        } else if (trimmedLine.startsWith('    ') || trimmedLine.startsWith('\t')) {
+                            if (!inBulletList) {
+                                importantHTML += '<div class="bullet-list">';
+                                inBulletList = true;
+                            }
+                            const subBulletContent = trimmedLine.trim();
+                            importantHTML += `<div class="sub-bullet-item" contenteditable="false">${subBulletContent}</div>`;
+                        } else {
+                            if (inBulletList) {
+                                importantHTML += '</div>';
+                                inBulletList = false;
+                            }
+                            
+                            if (trimmedLine.endsWith(':') || trimmedLine.match(/^\d+\./)) {
+                                importantHTML += `<div class="line-item" contenteditable="false"><strong>${trimmedLine}</strong></div>`;
+                            } else {
+                                importantHTML += `<p class="formatted-line" contenteditable="false">${trimmedLine}</p>`;
+                            }
+                        }
+                    });
+                    
+                    if (inBulletList) {
+                        importantHTML += '</div>';
+                    }
+                    
+                    importantHTML += `
+                            </div>
+                        </div>
+                    `;
+                    
+                    return importantHTML;
+                }
+                
+                return null;
+            }
+
+            extractEventCodesTable(tempDiv) {
+                const allText = tempDiv.textContent;
+                const tables = tempDiv.querySelectorAll('table');
+                
+                // Look for event codes table
+                for (let table of tables) {
+                    const tableText = table.textContent.toLowerCase();
+                    if (tableText.includes('event code') && tableText.includes('description')) {
+                        return this.processEventCodesTable(table);
+                    }
+                }
+                
+                // If no table found, look for event codes in text format
+                const eventCodesMatch = allText.match(/Event Codes & Descriptions([^]*?)(?=\n\n[A-Z]|Overarching Rules|$)/i);
+                if (eventCodesMatch) {
+                    const eventText = eventCodesMatch[1];
+                    const lines = eventText.split('\n').filter(line => line.trim());
+                    
+                    let eventHTML = `
+                        <div class="collapsible-section" id="event-codes-table">
+                            <div class="section-header" onclick="converter.toggleSection('event-codes-table')">
+                                <span>📊 Event Codes & Descriptions</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="section-content">
+                                <table class="rules-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Event Code</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    lines.forEach(line => {
+                        const parts = line.split('|').map(part => part.trim()).filter(part => part);
+                        if (parts.length >= 2 && !parts[0].toLowerCase().includes('event code')) {
+                            const eventCode = parts[0];
+                            const description = parts[1];
+                            
+                            this.eventCodes.push({ code: eventCode, id: `event-${eventCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}` });
+                            
+                            eventHTML += `
+                                <tr>
+                                    <td><strong>${eventCode}</strong></td>
+                                    <td>${description}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                    
+                    eventHTML += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                    
+                    return eventHTML;
+                }
+                
+                return null;
+            }
+
+            processEventCodesTable(table) {
                 const rows = table.querySelectorAll('tr');
-                if (rows.length === 0) return '';
-
-                let tableHTML = `
-                    <div class="category-section">
-                        <div class="category-header">${categoryName}</div>
-                        <table class="procedure-table">
+                let eventHTML = `
+                    <div class="collapsible-section" id="event-codes-table">
+                        <div class="section-header" onclick="converter.toggleSection('event-codes-table')">
+                            <span>📊 Event Codes & Descriptions</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="section-content">
+                            <table class="rules-table">
                 `;
-
+                
+                let headerProcessed = false;
+                
                 rows.forEach((row, index) => {
                     const cells = row.querySelectorAll('td, th');
                     if (cells.length >= 2) {
@@ -608,73 +1067,450 @@
                         const description = cells[1].textContent.trim();
                         
                         if (index === 0 || eventCode.toLowerCase().includes('event') || eventCode.toLowerCase().includes('code')) {
-                            // Header row
-                            tableHTML += '<thead><tr><th>Event Code</th><th>Description</th></tr></thead><tbody>';
-                        } else {
-                            // Data row
-                            tableHTML += `
+                            if (!headerProcessed) {
+                                eventHTML += '<thead><tr><th>Event Code</th><th>Description</th></tr></thead><tbody>';
+                                headerProcessed = true;
+                            }
+                        } else if (eventCode && description) {
+                            this.eventCodes.push({ code: eventCode, id: `event-${eventCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}` });
+                            
+                            eventHTML += `
                                 <tr>
-                                    <td class="event-code">${eventCode}</td>
-                                    <td>
-                                        <div class="description">${description}</div>
-                                        ${this.extractProcedureDetails(cells)}
-                                    </td>
+                                    <td><strong>${eventCode}</strong></td>
+                                    <td>${description}</td>
                                 </tr>
                             `;
                         }
                     }
                 });
+                
+                eventHTML += '</tbody></table></div></div>';
+                return eventHTML;
+            }
 
-                tableHTML += '</tbody></table></div>';
-                return tableHTML;
+            processEventCodeSections(tempDiv) {
+                let sectionsHTML = '';
+                
+                // Create individual sections for each event code
+                this.eventCodes.forEach(eventCodeObj => {
+                    const sectionId = eventCodeObj.id;
+                    const eventCode = eventCodeObj.code;
+                    
+                    // Look for detailed information about this event code
+                    const allText = tempDiv.textContent;
+                    const eventPattern = new RegExp(`${eventCode}([^]*?)(?=\\n\\n[A-Z]|$)`, 'i');
+                    const eventMatch = allText.match(eventPattern);
+                    
+                    let detailsContent = '<p contenteditable="false">Click to expand for detailed procedures and error handling.</p>';
+                    
+                    if (eventMatch) {
+                        const eventDetails = eventMatch[1];
+                        detailsContent = this.processEventDetails(eventDetails);
+                    }
+                    
+                    sectionsHTML += `
+                        <div class="collapsible-section" id="${sectionId}">
+                            <div class="section-header" onclick="converter.toggleSection('${sectionId}')">
+                                <span><span class="event-code-badge">${eventCode}</span> Detailed Procedures</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="section-content">
+                                <div class="procedure-details">
+                                    ${detailsContent}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                return sectionsHTML;
+            }
+
+            processEventDetails(detailsText) {
+                const lines = detailsText.split('\n');
+                let processedDetails = '';
+                
+                // Split content by common delimiters and patterns
+                const allContent = detailsText.replace(/\n/g, ' ').trim();
+                
+                // Look for error messages, actions, and other info
+                const errorMessages = [];
+                const steps = [];
+                const otherInfo = [];
+                
+                // Split by common patterns like event codes, error types, etc.
+                const segments = allContent.split(/(?=[A-Z]{3,}[A-Z0-9]+)|(?=Application error)|(?=LACS:)|(?=Error:)|(?=Step \d+)|(?=\d+\.)/);
+                
+                segments.forEach(segment => {
+                    const trimmedSegment = segment.trim();
+                    if (!trimmedSegment) return;
+                    
+                    if (trimmedSegment.toLowerCase().includes('error') || 
+                        trimmedSegment.toLowerCase().includes('timeout') ||
+                        trimmedSegment.toLowerCase().includes('invalid') ||
+                        trimmedSegment.toLowerCase().includes('lacs:') ||
+                        trimmedSegment.toLowerCase().includes('database')) {
+                        errorMessages.push(trimmedSegment);
+                    } else if (trimmedSegment.match(/^\d+\./) || 
+                               trimmedSegment.toLowerCase().startsWith('step') ||
+                               trimmedSegment.toLowerCase().includes('resubmit') ||
+                               trimmedSegment.toLowerCase().includes('escalate') ||
+                               trimmedSegment.toLowerCase().includes('confirm')) {
+                        steps.push(trimmedSegment);
+                    } else if (trimmedSegment.length > 10) {
+                        otherInfo.push(trimmedSegment);
+                    }
+                });
+                
+                // If no clear categorization, split by length and common patterns
+                if (errorMessages.length === 0 && steps.length === 0 && otherInfo.length === 0) {
+                    // Split long text into meaningful chunks
+                    const chunks = allContent.split(/(?=[A-Z]{4,})|(?=\b(?:Application|LACS|Error|Step|Resubmit|Escalate|Confirm)\b)/);
+                    chunks.forEach(chunk => {
+                        const trimmed = chunk.trim();
+                        if (trimmed && trimmed.length > 5) {
+                            otherInfo.push(trimmed);
+                        }
+                    });
+                }
+                
+                if (errorMessages.length > 0) {
+                    processedDetails += '<div class="error-messages" contenteditable="false"><strong>Related Messages:</strong>';
+                    errorMessages.forEach(error => {
+                        processedDetails += `<div class="error-message" contenteditable="false">${error}</div>`;
+                    });
+                    processedDetails += '</div>';
+                }
+                
+                if (steps.length > 0) {
+                    processedDetails += '<div class="steps" contenteditable="false"><strong>Actions & Steps:</strong>';
+                    steps.forEach(action => {
+                        processedDetails += `<div class="step"><div class="step-content" contenteditable="false">${action}</div></div>`;
+                    });
+                    processedDetails += '</div>';
+                }
+                
+                if (otherInfo.length > 0) {
+                    processedDetails += '<div class="additional-info" contenteditable="false"><strong>Additional Information:</strong>';
+                    otherInfo.forEach(info => {
+                        processedDetails += `<div class="info-item" contenteditable="false">${info}</div>`;
+                    });
+                    processedDetails += '</div>';
+                }
+                
+                return processedDetails || '<p class="formatted-line" contenteditable="false">No additional details available for this event code.</p>';
             }
 
             extractProcedureDetails(cells) {
                 let details = '';
                 
-                // Look for additional cells with procedure details
                 for (let i = 2; i < cells.length; i++) {
                     const cellContent = cells[i].textContent.trim();
                     if (cellContent) {
-                        const lines = cellContent.split('\
-').filter(line => line.trim());
-                        
-                        const errorMessages = lines.filter(line => 
-                            line.toLowerCase().includes('error') || 
-                            line.toLowerCase().includes('timeout') ||
-                            line.toLowerCase().includes('invalid') ||
-                            line.toLowerCase().includes('null')
-                        );
-
-                        const steps = lines.filter(line => 
-                            line.match(/^\\d+\\./) || 
-                            line.toLowerCase().startsWith('step')
-                        );
-
-                        if (errorMessages.length > 0) {
-                            details += '<div class="error-messages"><strong>Error Messages:</strong>';
-                            errorMessages.forEach(error => {
-                                details += `<div class="error-message">• ${error}</div>`;
-                            });
-                            details += '</div>';
-                        }
-
-                        if (steps.length > 0) {
-                            details += '<div class="steps"><strong>Steps:</strong>';
-                            steps.forEach(step => {
-                                details += `<div class="step"><div class="step-content">${step}</div></div>`;
-                            });
-                            details += '</div>';
-                        }
+                        // Split content by common patterns and delimiters
+                        const processedContent = this.processContentWithBullets(cellContent);
+                        details += processedContent;
                     }
                 }
 
                 return details;
             }
 
+            processContentWithBullets(content) {
+                let processedHTML = '';
+                
+                // Split by common event code patterns and phrases
+                const segments = content.split(/(?=[A-Z]{3,}[A-Z0-9]+)|(?=Application error)|(?=LACS:)|(?=Error Messages)|(?=Action)|(?=Step)/);
+                
+                const errorMessages = [];
+                const steps = [];
+                const eventCodes = [];
+                const rules = [];
+                const otherInfo = [];
+                
+                segments.forEach(segment => {
+                    const trimmed = segment.trim();
+                    if (!trimmed || trimmed.length < 3) return;
+                    
+                    if (trimmed.match(/^[A-Z]{3,}[A-Z0-9]+/)) {
+                        // Event codes
+                        eventCodes.push(trimmed);
+                    } else if (trimmed.toLowerCase().includes('error') || 
+                               trimmed.toLowerCase().includes('lacs:') ||
+                               trimmed.toLowerCase().includes('timeout') ||
+                               trimmed.toLowerCase().includes('invalid')) {
+                        errorMessages.push(trimmed);
+                    } else if (trimmed.toLowerCase().includes('step') ||
+                               trimmed.toLowerCase().includes('resubmit') ||
+                               trimmed.toLowerCase().includes('escalate') ||
+                               trimmed.toLowerCase().includes('confirm') ||
+                               trimmed.toLowerCase().includes('correct')) {
+                        steps.push(trimmed);
+                    } else if (trimmed.toLowerCase().includes('rule') ||
+                               trimmed.toLowerCase().includes('cannot') ||
+                               trimmed.toLowerCase().includes('must') ||
+                               trimmed.toLowerCase().includes('verify')) {
+                        rules.push(trimmed);
+                    } else if (trimmed.length > 10) {
+                        otherInfo.push(trimmed);
+                    }
+                });
+                
+                if (eventCodes.length > 0) {
+                    processedHTML += '<div class="additional-info" contenteditable="false"><strong>Event Codes:</strong>';
+                    eventCodes.forEach(code => {
+                        processedHTML += `<div class="info-item" contenteditable="false">${code}</div>`;
+                    });
+                    processedHTML += '</div>';
+                }
+                
+                if (rules.length > 0) {
+                    processedHTML += '<div class="steps" contenteditable="false"><strong>Rules & Requirements:</strong>';
+                    rules.forEach(rule => {
+                        processedHTML += `<div class="step"><div class="step-content" contenteditable="false">${rule}</div></div>`;
+                    });
+                    processedHTML += '</div>';
+                }
+                
+                if (errorMessages.length > 0) {
+                    processedHTML += '<div class="error-messages" contenteditable="false"><strong>Related Messages:</strong>';
+                    errorMessages.forEach(error => {
+                        processedHTML += `<div class="error-message" contenteditable="false">${error}</div>`;
+                    });
+                    processedHTML += '</div>';
+                }
+                
+                if (steps.length > 0) {
+                    processedHTML += '<div class="steps" contenteditable="false"><strong>Actions & Steps:</strong>';
+                    steps.forEach(step => {
+                        processedHTML += `<div class="step"><div class="step-content" contenteditable="false">${step}</div></div>`;
+                    });
+                    processedHTML += '</div>';
+                }
+                
+                if (otherInfo.length > 0) {
+                    processedHTML += '<div class="additional-info" contenteditable="false"><strong>Additional Information:</strong>';
+                    otherInfo.forEach(info => {
+                        processedHTML += `<div class="info-item" contenteditable="false">${info}</div>`;
+                    });
+                    processedHTML += '</div>';
+                }
+                
+                return processedHTML || `<div class="info-item" contenteditable="false">${content}</div>`;
+            }
+
+            extractOverarchingRules(tempDiv) {
+                const allText = tempDiv.textContent;
+                const overarchingRulesMatch = allText.match(/Overarching Rules for Card Requests & Address Updates([^]*?)(?=\n\n[A-Z]|Detailed Step|$)/i);
+                
+                if (overarchingRulesMatch) {
+                    const rulesText = overarchingRulesMatch[1];
+                    const lines = rulesText.split('\n'); // Don't filter empty lines
+                    
+                    let rulesHTML = `
+                        <div class="collapsible-section" id="overarching-rules">
+                            <div class="section-header" onclick="converter.toggleSection('overarching-rules')">
+                                <span>📋 Overarching Rules for Card Requests & Address Updates</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="section-content">
+                                <div class="procedure-details">
+                    `;
+                    
+                    let inBulletList = false;
+                    lines.forEach(line => {
+                        const trimmedLine = line.trim();
+                        
+                        // Handle empty lines
+                        if (!trimmedLine) {
+                            if (inBulletList) {
+                                rulesHTML += '</div><br>';
+                                inBulletList = false;
+                            } else {
+                                rulesHTML += '<br>';
+                            }
+                            return;
+                        }
+                        
+                        if (trimmedLine.startsWith('*') || trimmedLine.startsWith('•')) {
+                            if (!inBulletList) {
+                                rulesHTML += '<div class="bullet-list">';
+                                inBulletList = true;
+                            }
+                            const bulletContent = trimmedLine.substring(1).trim();
+                            rulesHTML += `<div class="bullet-item" contenteditable="false">${bulletContent}</div>`;
+                        } else if (trimmedLine.startsWith('    ') || trimmedLine.startsWith('\t')) {
+                            if (!inBulletList) {
+                                rulesHTML += '<div class="bullet-list">';
+                                inBulletList = true;
+                            }
+                            const subBulletContent = trimmedLine.trim();
+                            rulesHTML += `<div class="sub-bullet-item" contenteditable="false">${subBulletContent}</div>`;
+                        } else if (trimmedLine.includes('|')) {
+                            // Handle table format
+                            const parts = trimmedLine.split('|').map(part => part.trim()).filter(part => part);
+                            if (parts.length >= 2) {
+                                if (inBulletList) {
+                                    rulesHTML += '</div>';
+                                    inBulletList = false;
+                                }
+                                rulesHTML += `<div class="line-item" contenteditable="false"><strong>${parts[0]}:</strong> ${parts[1]}</div>`;
+                            }
+                        } else {
+                            if (inBulletList) {
+                                rulesHTML += '</div>';
+                                inBulletList = false;
+                            }
+                            
+                            if (trimmedLine.endsWith(':') || trimmedLine.match(/^\d+\./)) {
+                                rulesHTML += `<div class="line-item" contenteditable="false"><strong>${trimmedLine}</strong></div>`;
+                            } else {
+                                rulesHTML += `<p class="formatted-line" contenteditable="false">${trimmedLine}</p>`;
+                            }
+                        }
+                    });
+                    
+                    if (inBulletList) {
+                        rulesHTML += '</div>';
+                    }
+                    
+                    rulesHTML += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    return rulesHTML;
+                }
+                
+                return null;
+            }
+
+            extractErrorHandling(tempDiv) {
+                const allText = tempDiv.textContent;
+                const errorHandlingMatch = allText.match(/Error Handling Matrix([^]*?)(?=Event Codes|Overarching Rules|$)/i);
+                
+                if (errorHandlingMatch) {
+                    const errorText = errorHandlingMatch[1];
+                    
+                    let errorHTML = `
+                        <div class="collapsible-section" id="error-handling">
+                            <div class="section-header" onclick="converter.toggleSection('error-handling')">
+                                <span>⚠️ Error Handling Matrix</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="section-content">
+                                <div class="procedure-details">
+                                    <div contenteditable="false">${this.formatTextWithBullets(errorText)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    return errorHTML;
+                }
+                
+                return null;
+            }
+
+            formatTextWithBullets(text) {
+                const lines = text.split('\n');
+                let formattedHTML = '';
+                let inBulletList = false;
+                
+                lines.forEach((line, index) => {
+                    const trimmedLine = line.trim();
+                    
+                    // Handle empty lines as line breaks
+                    if (!trimmedLine) {
+                        if (inBulletList) {
+                            formattedHTML += '</div><br>';
+                            inBulletList = false;
+                        } else {
+                            formattedHTML += '<br>';
+                        }
+                        return;
+                    }
+                    
+                    // Handle bullet points
+                    if (trimmedLine.startsWith('*') || trimmedLine.startsWith('•')) {
+                        if (!inBulletList) {
+                            formattedHTML += '<div class="bullet-list">';
+                            inBulletList = true;
+                        }
+                        const bulletContent = trimmedLine.substring(1).trim();
+                        formattedHTML += `<div class="bullet-item">${bulletContent}</div>`;
+                    } 
+                    // Handle sub-bullet points (indented)
+                    else if (trimmedLine.startsWith('    ') || trimmedLine.startsWith('\t')) {
+                        if (!inBulletList) {
+                            formattedHTML += '<div class="bullet-list">';
+                            inBulletList = true;
+                        }
+                        const subBulletContent = trimmedLine.trim();
+                        formattedHTML += `<div class="sub-bullet-item">${subBulletContent}</div>`;
+                    }
+                    // Handle regular lines
+                    else {
+                        if (inBulletList) {
+                            formattedHTML += '</div>';
+                            inBulletList = false;
+                        }
+                        
+                        // Check if this line should be part of previous paragraph or new one
+                        const isShortLine = trimmedLine.length < 100;
+                        const endsWithColon = trimmedLine.endsWith(':');
+                        const isListItem = trimmedLine.match(/^\d+\./) || trimmedLine.toLowerCase().includes('step');
+                        
+                        if (endsWithColon || isListItem) {
+                            formattedHTML += `<div class="line-item"><strong>${trimmedLine}</strong></div>`;
+                        } else if (isShortLine && !trimmedLine.endsWith('.')) {
+                            formattedHTML += `<div class="line-item">${trimmedLine}</div>`;
+                        } else {
+                            formattedHTML += `<p class="formatted-line">${trimmedLine}</p>`;
+                        }
+                    }
+                });
+                
+                if (inBulletList) {
+                    formattedHTML += '</div>';
+                }
+                
+                return formattedHTML;
+            }
+
+            processRemainingContent(tempDiv) {
+                // Process any additional content that wasn't captured
+                const nonTableContent = tempDiv.cloneNode(true);
+                const tables = nonTableContent.querySelectorAll('table');
+                tables.forEach(table => table.remove());
+                
+                const remainingText = nonTableContent.textContent.trim();
+                if (remainingText && remainingText.length > 100) {
+                    return `
+                        <div class="collapsible-section" id="additional-content">
+                            <div class="section-header" onclick="converter.toggleSection('additional-content')">
+                                <span>📄 Additional Content</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="section-content">
+                                <div class="procedure-details">
+                                    <div contenteditable="false">${this.formatTextWithBullets(remainingText)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                return '';
+            }
+
             displayDocument() {
                 const documentContent = document.getElementById('documentContent');
                 documentContent.innerHTML = this.currentDocument.content;
+
+                // Populate table of contents
+                this.populateTableOfContents();
 
                 // Show relevant sections
                 document.getElementById('searchSection').classList.remove('hidden');
@@ -685,58 +1521,182 @@
                 document.querySelector('.header p').innerHTML = `Current Version: ${this.currentDocument.currentVersion} | Uploaded: ${new Date(this.currentDocument.uploadDate).toLocaleString()}`;
             }
 
+            populateTableOfContents() {
+                const tocLinks = document.getElementById('tocLinks');
+                if (tocLinks) {
+                    tocLinks.innerHTML = '';
+                    
+                    // Add important sections first
+                    const importantLink = document.createElement('a');
+                    importantLink.href = '#important-section';
+                    importantLink.className = 'toc-link';
+                    importantLink.innerHTML = '⚠️ Important Things to Know';
+                    importantLink.onclick = (e) => {
+                        e.preventDefault();
+                        this.scrollToSection('important-section');
+                    };
+                    tocLinks.appendChild(importantLink);
+                    
+                    // Add event codes
+                    this.eventCodes.forEach(event => {
+                        const link = document.createElement('a');
+                        link.href = `#${event.id}`;
+                        link.className = 'toc-link';
+                        link.innerHTML = `${event.code}`;
+                        link.onclick = (e) => {
+                            e.preventDefault();
+                            this.scrollToSection(event.id);
+                        };
+                        tocLinks.appendChild(link);
+                    });
+                    
+                    // Add other sections
+                    const otherSections = [
+                        { id: 'overarching-rules', name: '📋 Overarching Rules' },
+                        { id: 'error-handling', name: '⚠️ Error Handling' }
+                    ];
+                    
+                    otherSections.forEach(section => {
+                        if (document.getElementById(section.id)) {
+                            const link = document.createElement('a');
+                            link.href = `#${section.id}`;
+                            link.className = 'toc-link';
+                            link.innerHTML = section.name;
+                            link.onclick = (e) => {
+                                e.preventDefault();
+                                this.scrollToSection(section.id);
+                            };
+                            tocLinks.appendChild(link);
+                        }
+                    });
+                }
+            }
+
+            scrollToSection(sectionId) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    // Expand the section if it's collapsed
+                    const header = section.querySelector('.section-header');
+                    const content = section.querySelector('.section-content');
+                    if (content && content.classList.contains('collapsed')) {
+                        this.toggleSection(sectionId);
+                    }
+                    
+                    // Scroll to section with offset for sticky search
+                    const offsetTop = section.offsetTop - 100;
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Highlight the section briefly
+                    section.style.boxShadow = '0 0 20px rgba(66, 153, 225, 0.5)';
+                    setTimeout(() => {
+                        section.style.boxShadow = '';
+                    }, 2000);
+                }
+            }
+
+            toggleSection(sectionId) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    const header = section.querySelector('.section-header');
+                    const content = section.querySelector('.section-content');
+                    const icon = header.querySelector('.toggle-icon');
+                    
+                    if (content.classList.contains('collapsed')) {
+                        content.classList.remove('collapsed');
+                        header.classList.remove('collapsed');
+                        icon.textContent = '▼';
+                    } else {
+                        content.classList.add('collapsed');
+                        header.classList.add('collapsed');
+                        icon.textContent = '▶';
+                    }
+                }
+            }
+
+            collapseAll() {
+                const sections = document.querySelectorAll('.collapsible-section');
+                sections.forEach(section => {
+                    const content = section.querySelector('.section-content');
+                    const header = section.querySelector('.section-header');
+                    const icon = header.querySelector('.toggle-icon');
+                    
+                    content.classList.add('collapsed');
+                    header.classList.add('collapsed');
+                    icon.textContent = '▶';
+                });
+            }
+
+            expandAll() {
+                const sections = document.querySelectorAll('.collapsible-section');
+                sections.forEach(section => {
+                    const content = section.querySelector('.section-content');
+                    const header = section.querySelector('.section-header');
+                    const icon = header.querySelector('.toggle-icon');
+                    
+                    content.classList.remove('collapsed');
+                    header.classList.remove('collapsed');
+                    icon.textContent = '▼';
+                });
+            }
+
             startEditing() {
                 this.isEditing = true;
                 this.originalContent = this.currentDocument.content;
 
-                // Hide document content and show editor
-                document.getElementById('documentContent').classList.add('hidden');
-                document.getElementById('editorContainer').classList.remove('hidden');
-                document.getElementById('changeForm').classList.remove('hidden');
+                // Enable editing mode
+                const documentViewer = document.getElementById('documentViewer');
+                documentViewer.classList.add('editing');
+                
+                const proceduresContainer = document.querySelector('.procedures-container');
+                if (proceduresContainer) {
+                    proceduresContainer.classList.add('editing-mode');
+                }
+
+                // Make content editable
+                const editableElements = document.querySelectorAll('[contenteditable="false"]');
+                editableElements.forEach(element => {
+                    element.setAttribute('contenteditable', 'true');
+                });
 
                 // Show editing controls
                 document.getElementById('editBtn').classList.add('hidden');
                 document.getElementById('saveBtn').classList.remove('hidden');
                 document.getElementById('cancelBtn').classList.remove('hidden');
+                document.getElementById('changeForm').classList.remove('hidden');
 
-                // Initialize Quill editor
-                this.quill = new Quill('#editorContainer', {
-                    theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            ['bold', 'italic', 'underline', 'strike'],
-                            ['blockquote', 'code-block'],
-                            [{ 'header': 1 }, { 'header': 2 }],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'color': [] }, { 'background': [] }],
-                            ['link'],
-                            ['clean']
-                        ]
-                    }
-                });
-
-                this.quill.root.innerHTML = this.currentDocument.content;
+                this.showAlert('Editing mode enabled. Click on any text to edit it directly. All sections remain collapsible during editing.', 'success');
             }
 
             cancelEditing() {
                 this.isEditing = false;
                 
-                // Show document content and hide editor
-                document.getElementById('documentContent').classList.remove('hidden');
-                document.getElementById('editorContainer').classList.add('hidden');
-                document.getElementById('changeForm').classList.add('hidden');
+                // Disable editing mode
+                const documentViewer = document.getElementById('documentViewer');
+                documentViewer.classList.remove('editing');
+                
+                const proceduresContainer = document.querySelector('.procedures-container');
+                if (proceduresContainer) {
+                    proceduresContainer.classList.remove('editing-mode');
+                }
+
+                // Restore original content
+                const documentContent = document.getElementById('documentContent');
+                documentContent.innerHTML = this.originalContent;
+                this.populateTableOfContents();
 
                 // Show normal controls
                 document.getElementById('editBtn').classList.remove('hidden');
                 document.getElementById('saveBtn').classList.add('hidden');
                 document.getElementById('cancelBtn').classList.add('hidden');
+                document.getElementById('changeForm').classList.add('hidden');
 
                 // Clear form
                 document.getElementById('changeSummary').value = '';
                 document.getElementById('changedBy').value = '';
                 document.getElementById('changeDetails').value = '';
-
-                this.quill = null;
             }
 
             saveChanges() {
@@ -749,8 +1709,15 @@
                     return;
                 }
 
-                // Get updated content from Quill
-                const newContent = this.quill.root.innerHTML;
+                // Get updated content
+                const documentContent = document.getElementById('documentContent');
+                const newContent = documentContent.innerHTML;
+
+                // Make content non-editable again
+                const editableElements = document.querySelectorAll('[contenteditable="true"]');
+                editableElements.forEach(element => {
+                    element.setAttribute('contenteditable', 'false');
+                });
 
                 // Create new version
                 this.currentVersion++;
@@ -769,9 +1736,28 @@
                 this.currentDocument.currentVersion = this.currentVersion;
 
                 this.saveToStorage();
-                this.displayDocument();
-                this.cancelEditing();
+                
+                // Disable editing mode
+                const documentViewer = document.getElementById('documentViewer');
+                documentViewer.classList.remove('editing');
+                
+                const proceduresContainer = document.querySelector('.procedures-container');
+                if (proceduresContainer) {
+                    proceduresContainer.classList.remove('editing-mode');
+                }
 
+                // Show normal controls
+                document.getElementById('editBtn').classList.remove('hidden');
+                document.getElementById('saveBtn').classList.add('hidden');
+                document.getElementById('cancelBtn').classList.add('hidden');
+                document.getElementById('changeForm').classList.add('hidden');
+
+                // Clear form
+                document.getElementById('changeSummary').value = '';
+                document.getElementById('changedBy').value = '';
+                document.getElementById('changeDetails').value = '';
+
+                this.isEditing = false;
                 this.showAlert(`Document saved successfully! Version ${this.currentVersion} created.`, 'success');
             }
 
@@ -863,14 +1849,19 @@
 
                 if (!query.trim()) {
                     documentContent.innerHTML = originalContent;
+                    this.populateTableOfContents();
                     return;
                 }
 
-                // Simple text highlighting
-                const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi');
-                const highlightedContent = originalContent.replace(regex, '<mark style="background-color: yellow; padding: 2px 4px; border-radius: 3px;">$1</mark>');
+                // Expand all sections for better search visibility
+                this.expandAll();
+
+                // Simple text highlighting with better contrast
+                const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                const highlightedContent = originalContent.replace(regex, '<mark style="background-color: #ffd700; color: #000; padding: 2px 4px; border-radius: 3px; font-weight: bold;">$1</mark>');
                 
                 documentContent.innerHTML = highlightedContent;
+                this.populateTableOfContents();
             }
 
             downloadHTML() {
@@ -884,19 +1875,26 @@
                         <style>
                             body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
                             .procedures-container { max-width: 1200px; margin: 0 auto; }
-                            .category-section { margin-bottom: 2rem; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-                            .category-header { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); color: white; padding: 1rem; font-size: 1.2rem; font-weight: bold; text-align: center; }
-                            .procedure-table { width: 100%; border-collapse: collapse; }
-                            .procedure-table th { background: #4a5568; color: white; padding: 0.75rem; text-align: left; font-weight: 600; }
-                            .procedure-table td { border: 1px solid #e2e8f0; padding: 1rem; vertical-align: top; }
-                            .procedure-table tr:nth-child(even) { background-color: #f8fafc; }
-                            .event-code { font-weight: bold; font-family: 'Courier New', monospace; background: #f7fafc; padding: 0.25rem 0.5rem; border-radius: 4px; display: inline-block; }
-                            .description { color: #2b6cb0; font-weight: 600; margin-bottom: 0.5rem; }
-                            .error-messages { margin-top: 1rem; padding: 0.75rem; background: #fed7d7; border-left: 4px solid #f56565; border-radius: 4px; }
-                            .error-message { color: #c53030; margin-bottom: 0.25rem; font-size: 0.9rem; }
-                            .steps { margin-top: 1rem; padding: 0.75rem; background: #f0fff4; border-left: 4px solid #48bb78; border-radius: 4px; }
-                            .step { margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; }
-                            .step-content { font-weight: 600; color: #2d3748; margin-bottom: 0.25rem; }
+                            .important-section { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 25px; border-radius: 15px; margin-bottom: 30px; }
+                            .collapsible-section { margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+                            .section-header { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); color: white; padding: 18px 24px; font-weight: 600; font-size: 1.1rem; }
+                            .section-content { padding: 24px; }
+                            .event-code-badge { background: #4299e1; color: white; padding: 8px 16px; border-radius: 25px; font-family: 'Courier New', monospace; font-weight: bold; }
+                            .description { color: #2b6cb0; font-weight: 600; margin-bottom: 15px; font-size: 1.2rem; }
+                            .procedure-details { background: #f8f9fa; border-radius: 8px; padding: 20px; }
+                            .error-messages { margin-top: 15px; padding: 15px; background: #fed7d7; border-left: 4px solid #f56565; border-radius: 4px; }
+                            .error-message { color: #c53030; margin-bottom: 8px; }
+                            .steps { margin-top: 15px; padding: 15px; background: #f0fff4; border-left: 4px solid #48bb78; border-radius: 4px; }
+                            .step { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
+                            .step-content { font-weight: 600; color: #2d3748; }
+                            .table-of-contents { background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+                            .toc-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+                            .toc-link { color: #4299e1; text-decoration: none; padding: 12px 16px; border-radius: 8px; background: white; border: 1px solid #e2e8f0; }
+                            .bullet-list { margin: 15px 0; padding-left: 20px; }
+                            .bullet-item { margin-bottom: 8px; line-height: 1.6; }
+                            .rules-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                            .rules-table th { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); color: white; padding: 15px; }
+                            .rules-table td { border: 1px solid #e2e8f0; padding: 15px; vertical-align: top; }
                         </style>
                     </head>
                     <body>
@@ -972,6 +1970,20 @@
 
         // Initialize the converter
         const converter = new ProcedureConverter();
+
+        // Auto-scroll functionality for sticky search
+        window.addEventListener('scroll', () => {
+            const searchSection = document.getElementById('searchSection');
+            if (searchSection && !searchSection.classList.contains('hidden')) {
+                if (window.scrollY > 100) {
+                    searchSection.style.opacity = '0.95';
+                    searchSection.style.backdropFilter = 'blur(15px)';
+                } else {
+                    searchSection.style.opacity = '1';
+                    searchSection.style.backdropFilter = 'blur(10px)';
+                }
+            }
+        });
     </script>
 </body>
 </html>
